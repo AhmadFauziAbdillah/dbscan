@@ -1,0 +1,13 @@
+body {
+    background-color: #f8f9fa;
+    color: #212529;
+}
+
+.card {
+        transition: all 0.3s ease-in-out;
+    background-color: #e9ecef;
+}
+
+.table {
+    color: #212529;
+}
