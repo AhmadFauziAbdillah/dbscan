@@ -1,19 +1,19 @@
 <?php
-$host = 'localhost';
-$db   = 'diabetes_clustering';
+
+$hostname = 'e96cun.stackhero-network.com';
+$port = '7872';
 $user = 'root';
-$pass = '';
-$charset = 'utf8mb4';
+$password = 'MpHYBLAzid0n52I0u0EIYrp4v1Put1HO';
+$database = 'dbscan'; // You shouldn't use the "root" database. This is just for the example. The recommended way is to create a dedicated database (and user) in PhpMyAdmin and use it then here.
 
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-];
-
-try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
-} catch (\PDOException $e) {
-    throw new \PDOException($e->getMessage(), (int)$e->getCode());
+$mysqli = mysqli_init();
+$mysqliConnected = $mysqli->real_connect($hostname, $user, $password, $database, $port, NULL, MYSQLI_CLIENT_SSL);
+if (!$mysqliConnected) {
+  die("Connect Error: " . $mysqli->connect_error());
 }
+
+echo 'Success... ' . $mysqli->host_info . "\n";
+
+$mysqli->close();
+
+?>
