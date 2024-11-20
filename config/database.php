@@ -12,8 +12,6 @@ if (!$mysqliConnected) {
   die("Connect Error: " . $mysqli->connect_error());
 }
 
-echo 'Success... ' . $mysqli->host_info . "\n";
-
 $mysqli->close();
 
 ?>
