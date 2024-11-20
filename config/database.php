@@ -20,6 +20,4 @@ $pdo = new PDO($dsn, $user, $password, $options);
 $stm = $pdo->query("SELECT VERSION()");
 $version = $stm->fetch();
 
-echo "You are connected to a database running version " . $version[0] . "\n";
-
 ?>
