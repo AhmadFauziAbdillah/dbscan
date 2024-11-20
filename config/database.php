@@ -1,17 +1,20 @@
 <?php
-
-$hostname = 'e96cun.stackhero-network.com';
+$host = 'e96cun.stackhero-network.com';
 $port = '7872';
+$db   = 'dbscan';
 $user = 'root';
-$password = 'MpHYBLAzid0n52I0u0EIYrp4v1Put1HO';
-$database = 'dbscan'; // You shouldn't use the "root" database. This is just for the example. The recommended way is to create a dedicated database (and user) in PhpMyAdmin and use it then here.
+$pass = 'MpHYBLAzid0n52I0u0EIYrp4v1Put1HO';
+$charset = 'utf8mb4';
 
-$mysqli = mysqli_init();
-$mysqliConnected = $mysqli->real_connect($hostname, $user, $password, $database, $port, NULL, MYSQLI_CLIENT_SSL);
-if (!$mysqliConnected) {
-  die("Connect Error: " . $mysqli->connect_error());
+$dsn = "mysql:host=$host;port=port;dbname=$db;charset=$charset";
+$options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
+
+try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+} catch (\PDOException $e) {
+    throw new \PDOException($e->getMessage(), (int)$e->getCode());
 }
-
-$mysqli->close();
-
-?>
