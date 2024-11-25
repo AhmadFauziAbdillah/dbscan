@@ -85,8 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-}
-
 function performDBSCAN($data, $eps, $min_samples) {
     $clusters = [];
     $cluster_id = 0;
