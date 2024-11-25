@@ -15,12 +15,17 @@ $error_message = '';
 $stmt = $pdo->query("SELECT DISTINCT tahun FROM diabetes_data ORDER BY tahun DESC");
 $available_years = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
+// ... (previous code remains the same until the clustering section)
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $eps = $_POST['eps'];
     $min_samples = $_POST['min_samples'];
     $selected_year = $_POST['selected_year'];
 
     try {
+        // Start timing the execution
+        $start_time = microtime(true);
+
         $stmt = $pdo->prepare("SELECT wilayah, jumlah_penderita, jumlah_kematian FROM diabetes_data WHERE tahun = ?");
         $stmt->execute([$selected_year]);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -55,24 +60,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Count outliers (points with cluster = 0)
         $outliers_count = array_count_values($clusters)[0] ?? 0;
 
-        // Insert clustering results with all required fields including outliers
+        // Calculate execution time
+        $execution_time = round(microtime(true) - $start_time, 4);
+
+        // Insert clustering results with all required fields including execution_time
         $stmt = $pdo->prepare("INSERT INTO clustering_results 
-            (cluster_count, epsilon, min_samples, min_points, data_points, outliers, date_generated) 
-            VALUES (?, ?, ?, ?, ?, ?, NOW())");
+            (cluster_count, epsilon, min_samples, min_points, data_points, outliers, execution_time, date_generated) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
         $stmt->execute([
             $cluster_count,
             $eps,
             $min_samples,
             $min_samples,  // min_points same as min_samples for DBSCAN
             $data_points_count,
-            $outliers_count // Add outliers count
+            $outliers_count,
+            $execution_time
         ]);
         
         $success_message = "DBSCAN clustering completed successfully for year $selected_year! ".
-                          "Number of clusters: $cluster_count, Outliers: $outliers_count";
+                          "Number of clusters: $cluster_count, Outliers: $outliers_count, ".
+                          "Execution time: {$execution_time}s";
     } catch (Exception $e) {
         $error_message = "Error: " . $e->getMessage();
     }
+}
+
 }
 
 function performDBSCAN($data, $eps, $min_samples) {
