@@ -46,8 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         $cluster_count = count(array_unique($clusters)) - (in_array(0, $clusters) ? 1 : 0);
         
-        $stmt = $pdo->prepare("INSERT INTO clustering_results (cluster_count, date_generated) VALUES (?, NOW())");
-        $stmt->execute([$cluster_count]);
+    
+$stmt = $pdo->prepare("INSERT INTO clustering_results (cluster_count, epsilon, min_samples, date_generated) VALUES (?, ?, ?, NOW())");
+$stmt->execute([$cluster_count, $eps, $min_samples]);
         
         $success_message = "DBSCAN clustering completed successfully for year $selected_year! Number of clusters: " . $cluster_count;
     } catch (Exception $e) {
