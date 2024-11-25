@@ -29,9 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             throw new Exception("No data available for the selected year.");
         }
 
+        // Count total data points before normalization
+        $data_points_count = count($data);
+
         // Normalize data
         $max_penderita = max(array_column($data, 'jumlah_penderita'));
         $max_kematian = max(array_column($data, 'jumlah_kematian'));
+        
         foreach ($data as &$point) {
             $point['jumlah_penderita'] = $point['jumlah_penderita'] / $max_penderita;
             $point['jumlah_kematian'] = $point['jumlah_kematian'] / $max_kematian;
@@ -39,18 +43,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         $clusters = performDBSCAN($data, $eps, $min_samples);
 
+        // Update cluster assignments in database
         $stmt = $pdo->prepare("UPDATE diabetes_data SET cluster = ? WHERE wilayah = ? AND tahun = ?");
         foreach ($clusters as $wilayah => $cluster) {
             $stmt->execute([$cluster, $wilayah, $selected_year]);
         }
 
+        // Calculate number of actual clusters (excluding noise points marked as 0)
         $cluster_count = count(array_unique($clusters)) - (in_array(0, $clusters) ? 1 : 0);
         
-// Inside your try block, after performing DBSCAN:
-$data_points_count = count($data); // Count total number of data points
-
-$stmt = $pdo->prepare("INSERT INTO clustering_results (cluster_count, epsilon, min_samples, data_points, date_generated) VALUES (?, ?, ?, ?, NOW())");
-$stmt->execute([$cluster_count, $eps, $min_samples, $data_points_count]);
+        // Insert clustering results with all required fields
+        $stmt = $pdo->prepare("INSERT INTO clustering_results 
+            (cluster_count, epsilon, min_samples, min_points, data_points, date_generated) 
+            VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([
+            $cluster_count,
+            $eps,
+            $min_samples,
+            $min_samples,  // min_points same as min_samples for DBSCAN
+            $data_points_count
+        ]);
         
         $success_message = "DBSCAN clustering completed successfully for year $selected_year! Number of clusters: " . $cluster_count;
     } catch (Exception $e) {
@@ -67,14 +79,14 @@ function performDBSCAN($data, $eps, $min_samples) {
 
         $neighbors = getNeighbors($data, $point, $eps);
         if (count($neighbors) < $min_samples) {
-            $clusters[$point['wilayah']] = 0; // Unclustered
+            $clusters[$point['wilayah']] = 0; // Noise point
         } else {
             $cluster_id++;
             expandCluster($data, $point, $neighbors, $cluster_id, $eps, $min_samples, $clusters);
         }
     }
 
-    // If all points are unclustered, assign them to a single cluster
+    // If all points are noise, assign them to a single cluster
     if (count(array_unique($clusters)) === 1 && reset($clusters) === 0) {
         foreach ($clusters as &$cluster) {
             $cluster = 1;
@@ -88,10 +100,12 @@ function getNeighbors($data, $point, $eps) {
     $neighbors = [];
     foreach ($data as $other_point) {
         if ($point['wilayah'] === $other_point['wilayah']) continue;
+        
         $distance = sqrt(
             pow($point['jumlah_penderita'] - $other_point['jumlah_penderita'], 2) +
             pow($point['jumlah_kematian'] - $other_point['jumlah_kematian'], 2)
         );
+        
         if ($distance <= $eps) {
             $neighbors[] = $other_point;
         }
@@ -104,8 +118,10 @@ function expandCluster(&$data, $point, $neighbors, $cluster_id, $eps, $min_sampl
     
     for ($i = 0; $i < count($neighbors); $i++) {
         $neighbor = $neighbors[$i];
+        
         if (!isset($clusters[$neighbor['wilayah']]) || $clusters[$neighbor['wilayah']] === 0) {
             $clusters[$neighbor['wilayah']] = $cluster_id;
+            
             $new_neighbors = getNeighbors($data, $neighbor, $eps);
             if (count($new_neighbors) >= $min_samples) {
                 $neighbors = array_merge($neighbors, $new_neighbors);
@@ -114,11 +130,23 @@ function expandCluster(&$data, $point, $neighbors, $cluster_id, $eps, $min_sampl
     }
 }
 
-include '../includes/header.php';
 ?>
+
+<!-- HTML Structure -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBSCAN Clustering - Diabetes Data Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
 
 <div class="container-fluid">
     <div class="row">
+        <!-- Sidebar -->
         <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
             <div class="position-sticky pt-3">
                 <ul class="nav flex-column">
@@ -143,13 +171,8 @@ include '../includes/header.php';
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="reports.php">
                             <i class="bi bi-file-earmark-text me-2"></i>Reports
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <i class="bi bi-gear me-2"></i>Settings
                         </a>
                     </li>
                     <li class="nav-item">
@@ -161,6 +184,7 @@ include '../includes/header.php';
             </div>
         </nav>
 
+        <!-- Main Content -->
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h1 class="h2">DBSCAN Clustering</h1>
@@ -186,21 +210,27 @@ include '../includes/header.php';
                             <form method="POST">
                                 <div class="mb-3">
                                     <label for="selected_year" class="form-label">Select Year</label>
-                                    <select class="form-control" id="selected_year" name="selected_year" required>
+                                    <select class="form-select" id="selected_year" name="selected_year" required>
                                         <?php foreach ($available_years as $year): ?>
-                                            <option value="<?= $year ?>"><?= $year ?></option>
+                                            <option value="<?php echo htmlspecialchars($year); ?>">
+                                                <?php echo htmlspecialchars($year); ?>
+                                            </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <div class="mb-3">
                                     <label for="eps" class="form-label">Epsilon (eps)</label>
-                                    <input type="number" step="0.01" class="form-control" id="eps" name="eps" required>
+                                    <input type="number" step="0.01" min="0" class="form-control" id="eps" name="eps" required>
+                                    <div class="form-text">Distance threshold for neighbors (0-1)</div>
                                 </div>
                                 <div class="mb-3">
                                     <label for="min_samples" class="form-label">Minimum Samples</label>
-                                    <input type="number" class="form-control" id="min_samples" name="min_samples" required>
+                                    <input type="number" min="1" class="form-control" id="min_samples" name="min_samples" required>
+                                    <div class="form-text">Minimum number of points to form a cluster</div>
                                 </div>
-                                <button type="submit" class="btn btn-primary">Run DBSCAN Clustering</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-play-fill me-2"></i>Run DBSCAN Clustering
+                                </button>
                             </form>
                         </div>
                     </div>
@@ -210,4 +240,6 @@ include '../includes/header.php';
     </div>
 </div>
 
-<?php include '../includes/footer.php'; ?>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
