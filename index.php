@@ -40,11 +40,11 @@ function getCategory($cluster) {
     $cluster = (int)$cluster;
     switch ($cluster) {
         case 0:
-            return ['category' => 'Rendah', 'color' => 'bg-success'];
+            return ['category' => 'Tinggi', 'color' => 'bg-danger'];
         case 1:
             return ['category' => 'Sedang', 'color' => 'bg-warning'];
         case 2:
-            return ['category' => 'Tinggi', 'color' => 'bg-danger'];
+            return ['category' => 'rendah', 'color' => 'bg-success'];
         default:
             return ['category' => 'Tidak Terdefinisi', 'color' => 'bg-secondary'];
     }
