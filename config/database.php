@@ -1,10 +1,10 @@
 <?php
 
-$hostname = 'e96cun.stackhero-network.com';
-$port = '7872';
+$hostname = 'xuff1k.stackhero-network.com';
+$port = '5349';
 $user = 'root';
-$password = 'MpHYBLAzid0n52I0u0EIYrp4v1Put1HO';
-$database = 'dbscan'; // You shouldn't use the "root" database. This is just for the example. The recommended way is to create a dedicated database (and user) in PhpMyAdmin and use it then here.
+$password = 'zbbwJObxcRMLEAkHQ90KxbR7ni4aTXIK';
+$database = 'diabetes_clustering'; // You shouldn't use the "root" database. This is just for the example. The recommended way is to create a dedicated database (and user) in PhpMyAdmin and use it then here.
 
 $dsn = "mysql:host=$hostname;port=$port;dbname=$database";
 
